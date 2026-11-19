@@ -1,17 +1,20 @@
 "use client";
 
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
-import { inflationComponents } from "@/app/_lib/dashboard-data";
+import type { InflationComponent, InflationData } from "@/app/_lib/types";
 import { CardHeader } from "../card-parts";
 import { ChartTooltipCard } from "./chart-utils";
 
 const SIZE = 128;
 const RING = 15;
 
-export function InflationCard() {
+export function InflationCard({ data }: { data: InflationData }) {
   return (
     <article className="dashboard-card">
-      <CardHeader title="Inflation trends" subtitle="12-month percent change" />
+      <CardHeader
+        title="Inflation trends"
+        subtitle={`12-month percent change · ${data.period}`}
+      />
       <div className="mt-6 flex items-center gap-6">
         <div className="relative h-32 w-32 shrink-0">
           <PieChart
@@ -20,8 +23,8 @@ export function InflationCard() {
             margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
           >
             <Pie
-              data={inflationComponents}
-              dataKey="share"
+              data={data.components}
+              dataKey="weight"
               nameKey="name"
               cx="50%"
               cy="50%"
@@ -32,7 +35,7 @@ export function InflationCard() {
               stroke="none"
               isAnimationActive={false}
             >
-              {inflationComponents.map((c) => (
+              {data.components.map((c) => (
                 <Cell key={c.name} fill={c.slice} />
               ))}
             </Pie>
@@ -40,11 +43,14 @@ export function InflationCard() {
               wrapperStyle={{ zIndex: 10 }}
               content={({ active, payload }) => {
                 const item = payload?.[0]?.payload as
-                  (typeof inflationComponents)[number] | undefined;
+                  InflationComponent | undefined;
                 if (!active || !item) return null;
                 return (
                   <ChartTooltipCard title={item.name}>
                     {item.value} y/y
+                    <span className="block text-[10px] font-normal text-slate-400">
+                      {item.weight}% of CPI basket
+                    </span>
                   </ChartTooltipCard>
                 );
               }}
@@ -52,13 +58,13 @@ export function InflationCard() {
           </PieChart>
           <div className="pointer-events-none absolute inset-[15px] flex flex-col items-center justify-center rounded-full">
             <span className="text-[22px] font-semibold text-slate-900">
-              2.4%
+              {data.headline}
             </span>
             <span className="text-[9px] text-slate-400">Headline CPI</span>
           </div>
         </div>
         <ul className="min-w-0 flex-1 space-y-4">
-          {inflationComponents.map((c) => (
+          {data.components.map((c) => (
             <li
               key={c.name}
               className="flex items-center justify-between text-[11px]"
