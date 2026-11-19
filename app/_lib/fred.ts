@@ -390,7 +390,6 @@ export type SeriesMap = Record<SeriesId, Obs[]>;
 /** About 10 years for every series (FRED distributes the S&P 500 for the last 10 years only). */
 const LOOKBACK_DAYS = 3700;
 
-export const fredSeriesUrl = (id: string) => `https://fred.stlouisfed.org/series/${id}`;
 
 /** Raw observations for every catalog series. Cached and refreshed hourly. */
 export async function getRawSeries(): Promise<SeriesMap> {

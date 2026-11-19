@@ -2,7 +2,8 @@
 
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import type { InflationComponent, InflationData } from "@/app/_lib/types";
-import { CardHeader } from "../card-parts";
+import { CardHeader, SourceLink } from "../card-parts";
+import { CARD_SOURCES } from "@/app/_lib/sources";
 import { ChartTooltipCard } from "./chart-utils";
 
 const SIZE = 128;
@@ -10,7 +11,7 @@ const RING = 15;
 
 export function InflationCard({ data }: { data: InflationData }) {
   return (
-    <article className="dashboard-card">
+    <article className="dashboard-card flex flex-col">
       <CardHeader
         title="Inflation trends"
         subtitle={`12-month percent change · ${data.period}`}
@@ -82,6 +83,7 @@ export function InflationCard({ data }: { data: InflationData }) {
         <span>Fed target</span>
         <span className="font-semibold text-slate-600">2.0%</span>
       </div>
+      <SourceLink source={CARD_SOURCES.inflation} title="Inflation trends" />
     </article>
   );
 }

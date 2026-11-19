@@ -1,4 +1,5 @@
-import { CardHeader, Trend } from "./_components/card-parts";
+import { CardHeader, SourceLink, Trend } from "./_components/card-parts";
+import { CARD_SOURCES } from "@/app/_lib/sources";
 import { InflationCard } from "./_components/charts/inflation-card";
 import { Sp500Card } from "./_components/charts/sp500-card";
 import { YieldCurveCard } from "./_components/charts/yield-curve-card";
@@ -10,7 +11,7 @@ import type { LaborData } from "./_lib/types";
 
 function LaborMarketCard({ data }: { data: LaborData }) {
   return (
-    <article className="dashboard-card">
+    <article className="dashboard-card flex flex-col">
       <CardHeader
         title="Labor market"
         subtitle="Latest readings · bars show level vs. 2-year high"
@@ -51,6 +52,7 @@ function LaborMarketCard({ data }: { data: LaborData }) {
           {data.summary}
         </p>
       </div>
+      <SourceLink source={CARD_SOURCES.labor} title="Labor market" />
     </article>
   );
 }

@@ -11,7 +11,8 @@ import {
 } from "recharts";
 import { niceTicks } from "@/app/_lib/scale";
 import type { YieldData, YieldPoint } from "@/app/_lib/types";
-import { CardHeader } from "../card-parts";
+import { CardHeader, SourceLink } from "../card-parts";
+import { CARD_SOURCES } from "@/app/_lib/sources";
 import { ChartTooltipCard, EdgeAnchoredTick } from "./chart-utils";
 
 const LINE = "#7557c7";
@@ -28,7 +29,7 @@ export function YieldCurveCard({ data }: { data: YieldData }) {
   const spreadPositive = data.spreadBps >= 0;
 
   return (
-    <article className="dashboard-card">
+    <article className="dashboard-card flex flex-col">
       <CardHeader
         title="Treasury yield curve"
         subtitle={`Constant maturity rates · ${data.date}`}
@@ -103,6 +104,7 @@ export function YieldCurveCard({ data }: { data: YieldData }) {
           </strong>
         </span>
       </div>
+      <SourceLink source={CARD_SOURCES.yields} title="Treasury yield curve" />
     </article>
   );
 }
