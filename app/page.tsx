@@ -3,6 +3,7 @@ import { InflationCard } from "./_components/charts/inflation-card";
 import { Sp500Card } from "./_components/charts/sp500-card";
 import { YieldCurveCard } from "./_components/charts/yield-curve-card";
 import { DashboardShell } from "./_components/dashboard-shell";
+import { ExportMenu } from "./_components/export-menu";
 import { Icon } from "./_components/icon";
 import { getDashboardData } from "./_lib/fred";
 import type { LaborData } from "./_lib/types";
@@ -73,9 +74,7 @@ export default async function Home() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" className="secondary-button">
-              <Icon name="download" size={15} /> Export data
-            </button>
+            <ExportMenu />
             <button type="button" className="primary-button">
               Customize dashboard
             </button>
