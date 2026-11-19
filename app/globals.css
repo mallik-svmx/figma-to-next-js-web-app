@@ -1,26 +1,211 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: light;
+    background: #f4f7fa;
+    font-synthesis: none;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    background: #f4f7fa;
+    font-family: var(--font-sans);
+  }
+
+  button {
+    cursor: pointer;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    display: flex;
+    width: 244px;
+    transform: translateX(-100%);
+    flex-direction: column;
+    background: linear-gradient(180deg, #112f51 0%, #0d2744 100%);
+    box-shadow: 8px 0 30px rgb(15 23 42 / 0.08);
+    transition: transform 200ms ease;
+  }
+
+  .sidebar-open {
+    transform: translateX(0);
+  }
+
+  .nav-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 12px;
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: rgb(219 234 254 / 0.65);
+    font-size: 12px;
+    font-weight: 500;
+    transition: 150ms ease;
+  }
+
+  .nav-item:hover {
+    background: rgb(255 255 255 / 0.06);
+    color: white;
+  }
+
+  .nav-active {
+    background: rgb(255 255 255 / 0.1);
+    color: white;
+    box-shadow: inset 3px 0 #55a5ee;
+  }
+
+  .icon-button {
+    display: inline-flex;
+    height: 36px;
+    width: 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: #94a3b8;
+    transition: 150ms ease;
+  }
+
+  .icon-button:hover {
+    background: #f1f5f9;
+    color: #334155;
+  }
+
+  .secondary-button,
+  .primary-button {
+    display: inline-flex;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border-radius: 8px;
+    padding: 0 14px;
+    font-size: 11px;
+    font-weight: 600;
+    transition: 150ms ease;
+  }
+
+  .secondary-button {
+    border: 1px solid #dce3eb;
+    background: white;
+    color: #475569;
+  }
+
+  .secondary-button:hover {
+    border-color: #b9c5d2;
+    background: #f8fafc;
+  }
+
+  .primary-button {
+    background: #286fae;
+    color: white;
+    box-shadow: 0 4px 10px rgb(40 111 174 / 0.16);
+  }
+
+  .primary-button:hover {
+    background: #215f96;
+  }
+
+  .metric-card,
+  .dashboard-card {
+    border: 1px solid #e3e9f0;
+    background: white;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.02);
+  }
+
+  .metric-card {
+    border-radius: 12px;
+    padding: 17px 18px;
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 0.06);
+  }
+
+  .dashboard-card {
+    min-height: 270px;
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  .metric-icon {
+    display: flex;
+    height: 32px;
+    width: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
+
+  .metric-blue {
+    background: #eaf3fc;
+    color: #2776c8;
+  }
+  .metric-amber {
+    background: #fff4de;
+    color: #c98213;
+  }
+  .metric-violet {
+    background: #f1ecfc;
+    color: #7557c7;
+  }
+  .metric-emerald {
+    background: #e6f7f0;
+    color: #26936d;
+  }
+
+  .range-button {
+    border-radius: 6px;
+    padding: 6px 9px;
+    color: #94a3b8;
+    font-size: 9px;
+    font-weight: 600;
+    transition: 150ms ease;
+  }
+
+  .range-button:hover {
+    color: #475569;
+  }
+
+  .range-active {
+    background: white;
+    color: #256db0;
+    box-shadow: 0 1px 4px rgb(15 23 42 / 0.1);
+  }
+
+}
+
+/* Recharts: remove the default focus outline drawn around the SVG surface */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-wrapper *:focus {
+  outline: none;
+}
+
+@media (min-width: 1024px) {
+  .sidebar {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 420px) {
+  .primary-button,
+  .secondary-button {
+    flex: 1;
+    padding-inline: 9px;
+  }
 }
