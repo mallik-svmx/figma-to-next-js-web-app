@@ -21,7 +21,7 @@ import { ranges } from "./types";
 
 const FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv";
 
-type Obs = { date: string; t: number; value: number };
+export type Obs = { date: string; t: number; value: number };
 
 /* ------------------------------------------------------------------ */
 /* Fetching                                                            */
@@ -136,7 +136,7 @@ function latestChange(obs: Obs[]) {
   const cur = last(obs);
   const target = monthsBefore(cur.date, 1);
   const prev = obs.find((o) => o.date === target) ?? last(obs, 2);
-  return { cur, delta: cur.value - prev.value, prevLabel: fmtMonth.format(prev.t) };
+  return { cur, prev, delta: cur.value - prev.value, prevLabel: fmtMonth.format(prev.t) };
 }
 
 function trend(delta: number, unit: "pt" | "%"): Pick<Metric, "trend" | "up"> {
@@ -302,20 +302,24 @@ function buildLabor(payems: Obs[], openings: Obs[], claims: Obs[]): LaborData {
  */
 const CPI_WEIGHTS = { core: 79.9, food: 13.7, energy: 6.4 };
 
-function buildInflation(cpi: Obs[], core: Obs[], food: Obs[], energy: Obs[]): InflationData {
+/** 12-month changes for headline CPI and its parts, at the latest month all four have one. */
+function latestCpiChanges(cpi: Obs[], core: Obs[], food: Obs[], energy: Obs[]) {
   const yoy = [cpi, core, food, energy].map((obs) => new Map(pctChangeSeries(obs, 12).map((o) => [o.date, o])));
-  // Latest month for which headline and every component have a 12-month change.
   const month = [...yoy[0].keys()].reverse().find((d) => yoy.every((m) => m.has(d)));
   if (!month) throw new Error("No month with complete CPI data");
   const [headline, coreY, foodY, energyY] = yoy.map((m) => m.get(month)!);
+  return { headline, core: coreY, food: foodY, energy: energyY };
+}
 
+function buildInflation(cpi: Obs[], core: Obs[], food: Obs[], energy: Obs[]): InflationData {
+  const y = latestCpiChanges(cpi, core, food, energy);
   return {
-    headline: pct(headline.value),
-    period: monthLabel(headline),
+    headline: pct(y.headline.value),
+    period: monthLabel(y.headline),
     components: [
-      { name: "Core CPI", value: pct(coreY.value), weight: CPI_WEIGHTS.core, slice: "#286fbd", dot: "bg-blue-600" },
-      { name: "Food", value: pct(foodY.value), weight: CPI_WEIGHTS.food, slice: "#35a8bd", dot: "bg-cyan-500" },
-      { name: "Energy", value: pct(energyY.value), weight: CPI_WEIGHTS.energy, slice: "#dce5ee", dot: "bg-slate-300" },
+      { name: "Core CPI", value: pct(y.core.value), weight: CPI_WEIGHTS.core, slice: "#286fbd", dot: "bg-blue-600" },
+      { name: "Food", value: pct(y.food.value), weight: CPI_WEIGHTS.food, slice: "#35a8bd", dot: "bg-cyan-500" },
+      { name: "Energy", value: pct(y.energy.value), weight: CPI_WEIGHTS.energy, slice: "#dce5ee", dot: "bg-slate-300" },
     ],
   };
 }
@@ -329,17 +333,20 @@ const TENORS = [
   ["30Y", "DGS30"],
 ] as const;
 
-function buildYields(byId: Record<string, Obs[]>): YieldData {
-  // Use the most recent date on which every maturity (and the 2Y) was published.
-  const ids = [...TENORS.map(([, id]) => id), "DGS2"];
-  const maps = Object.fromEntries(
-    ids.map((id) => [id, new Map(byId[id].map((o) => [o.date, o.value]))]),
-  );
-  const dates = byId.DGS10.map((o) => o.date).reverse();
-  const date = dates.find((d) => ids.every((id) => maps[id].has(d)));
+/** Treasury yields on the most recent date every maturity (and the 2Y) was published. */
+function latestYields(s: SeriesMap) {
+  const ids = [...TENORS.map(([, id]) => id), "DGS2"] as const;
+  const maps = Object.fromEntries(ids.map((id) => [id, new Map(s[id].map((o) => [o.date, o.value]))]));
+  const date = s.DGS10.map((o) => o.date)
+    .reverse()
+    .find((d) => ids.every((id) => maps[id].has(d)));
   if (!date) throw new Error("No common Treasury observation date found");
-
   const at = (id: string) => maps[id].get(date)!;
+  return { date, at };
+}
+
+function buildYields(s: SeriesMap): YieldData {
+  const { date, at } = latestYields(s);
   const tenYear = at("DGS10");
   const twoYear = at("DGS2");
   return {
@@ -352,53 +359,164 @@ function buildYields(byId: Record<string, Obs[]>): YieldData {
 }
 
 /* ------------------------------------------------------------------ */
-/* Entry point                                                         */
+/* Series catalog and raw data                                         */
 /* ------------------------------------------------------------------ */
 
-/** Loads and shapes every dashboard series. Cached and refreshed hourly. */
+/** Every FRED series the dashboard and its exports use, with FRED's own metadata. */
+export const SERIES_CATALOG = [
+  { id: "GDPC1", name: "Real Gross Domestic Product", units: "Billions of Chained 2017 Dollars", frequency: "Quarterly", adjustment: "Seasonally Adjusted Annual Rate" },
+  { id: "CPIAUCSL", name: "CPI for All Urban Consumers: All Items", units: "Index 1982-1984=100", frequency: "Monthly", adjustment: "Seasonally Adjusted" },
+  { id: "CPILFESL", name: "CPI for All Urban Consumers: All Items Less Food and Energy", units: "Index 1982-1984=100", frequency: "Monthly", adjustment: "Seasonally Adjusted" },
+  { id: "CPIUFDSL", name: "CPI for All Urban Consumers: Food", units: "Index 1982-1984=100", frequency: "Monthly", adjustment: "Seasonally Adjusted" },
+  { id: "CPIENGSL", name: "CPI for All Urban Consumers: Energy", units: "Index 1982-1984=100", frequency: "Monthly", adjustment: "Seasonally Adjusted" },
+  { id: "UNRATE", name: "Unemployment Rate", units: "Percent", frequency: "Monthly", adjustment: "Seasonally Adjusted" },
+  { id: "FEDFUNDS", name: "Federal Funds Effective Rate", units: "Percent", frequency: "Monthly", adjustment: "Not Seasonally Adjusted" },
+  { id: "SP500", name: "S&P 500", units: "Index", frequency: "Daily, Close", adjustment: "Not Seasonally Adjusted" },
+  { id: "PAYEMS", name: "All Employees, Total Nonfarm", units: "Thousands of Persons", frequency: "Monthly", adjustment: "Seasonally Adjusted" },
+  { id: "JTSJOL", name: "Job Openings: Total Nonfarm", units: "Level in Thousands", frequency: "Monthly", adjustment: "Seasonally Adjusted" },
+  { id: "ICSA", name: "Initial Claims", units: "Number", frequency: "Weekly, Ending Saturday", adjustment: "Seasonally Adjusted" },
+  { id: "DGS1MO", name: "Market Yield on U.S. Treasury Securities at 1-Month Constant Maturity", units: "Percent", frequency: "Daily", adjustment: "Not Seasonally Adjusted" },
+  { id: "DGS3MO", name: "Market Yield on U.S. Treasury Securities at 3-Month Constant Maturity", units: "Percent", frequency: "Daily", adjustment: "Not Seasonally Adjusted" },
+  { id: "DGS1", name: "Market Yield on U.S. Treasury Securities at 1-Year Constant Maturity", units: "Percent", frequency: "Daily", adjustment: "Not Seasonally Adjusted" },
+  { id: "DGS2", name: "Market Yield on U.S. Treasury Securities at 2-Year Constant Maturity", units: "Percent", frequency: "Daily", adjustment: "Not Seasonally Adjusted" },
+  { id: "DGS5", name: "Market Yield on U.S. Treasury Securities at 5-Year Constant Maturity", units: "Percent", frequency: "Daily", adjustment: "Not Seasonally Adjusted" },
+  { id: "DGS10", name: "Market Yield on U.S. Treasury Securities at 10-Year Constant Maturity", units: "Percent", frequency: "Daily", adjustment: "Not Seasonally Adjusted" },
+  { id: "DGS30", name: "Market Yield on U.S. Treasury Securities at 30-Year Constant Maturity", units: "Percent", frequency: "Daily", adjustment: "Not Seasonally Adjusted" },
+] as const;
+
+export type SeriesId = (typeof SERIES_CATALOG)[number]["id"];
+export type SeriesMap = Record<SeriesId, Obs[]>;
+
+/** About 10 years for every series (FRED distributes the S&P 500 for the last 10 years only). */
+const LOOKBACK_DAYS = 3700;
+
+export const fredSeriesUrl = (id: string) => `https://fred.stlouisfed.org/series/${id}`;
+
+/** Raw observations for every catalog series. Cached and refreshed hourly. */
+export async function getRawSeries(): Promise<SeriesMap> {
+  "use cache";
+  cacheLife("hours");
+  const all = await Promise.all(SERIES_CATALOG.map(({ id }) => fetchSeries(id, LOOKBACK_DAYS)));
+  return Object.fromEntries(SERIES_CATALOG.map(({ id }, i) => [id, all[i]])) as SeriesMap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Entry points                                                        */
+/* ------------------------------------------------------------------ */
+
+/** Shapes the raw series for the dashboard UI. */
 export async function getDashboardData(): Promise<DashboardData> {
   "use cache";
   cacheLife("hours");
-
-  const [
-    gdp,
-    cpi,
-    core,
-    food,
-    energy,
-    unrate,
-    fedfunds,
-    sp500,
-    payems,
-    openings,
-    claims,
-    ...yieldSeries
-  ] = await Promise.all([
-    fetchSeries("GDPC1", 800),
-    fetchSeries("CPIAUCSL", 500),
-    fetchSeries("CPILFESL", 500),
-    fetchSeries("CPIUFDSL", 500),
-    fetchSeries("CPIENGSL", 500),
-    fetchSeries("UNRATE", 120),
-    fetchSeries("FEDFUNDS", 120),
-    fetchSeries("SP500", 3700), // FRED publishes the last 10 years only
-    fetchSeries("PAYEMS", 800),
-    fetchSeries("JTSJOL", 800),
-    fetchSeries("ICSA", 800),
-    ...[...TENORS.map(([, id]) => id), "DGS2"].map((id) => fetchSeries(id, 45)),
-  ]);
-
-  const yieldIds = [...TENORS.map(([, id]) => id), "DGS2"];
-  const yields = buildYields(
-    Object.fromEntries(yieldIds.map((id, i) => [id, yieldSeries[i]])),
-  );
-
+  const s = await getRawSeries();
   return {
-    asOf: fmtLongDay.format(last(sp500).t),
-    metrics: buildMetrics(gdp, cpi, unrate, fedfunds),
-    sp500: buildSp500(sp500),
-    labor: buildLabor(payems, openings, claims),
-    inflation: buildInflation(cpi, core, food, energy),
-    yields,
+    asOf: fmtLongDay.format(last(s.SP500).t),
+    metrics: buildMetrics(s.GDPC1, s.CPIAUCSL, s.UNRATE, s.FEDFUNDS),
+    sp500: buildSp500(s.SP500),
+    labor: buildLabor(s.PAYEMS, s.JTSJOL, s.ICSA),
+    inflation: buildInflation(s.CPIAUCSL, s.CPILFESL, s.CPIUFDSL, s.CPIENGSL),
+    yields: buildYields(s),
   };
+}
+
+export type SnapshotRow = {
+  section: string;
+  indicator: string;
+  value: number;
+  unit: string;
+  observation_date: string;
+  change: number | "";
+  change_unit: string;
+  compared_to: string;
+  fred_series: string;
+  notes: string;
+};
+
+const round = (v: number, dp = 4) => Math.round(v * 10 ** dp) / 10 ** dp;
+
+/**
+ * Every figure shown on the dashboard as unformatted numbers, computed with
+ * the same helpers the UI uses so the two always agree.
+ */
+export function buildSnapshot(s: SeriesMap): SnapshotRow[] {
+  const rows: SnapshotRow[] = [];
+  type RowInput = Omit<SnapshotRow, "change" | "change_unit" | "compared_to" | "notes"> &
+    Partial<Pick<SnapshotRow, "change" | "change_unit" | "compared_to" | "notes">>;
+  const add = ({ change = "", change_unit = "", compared_to = "", notes = "", ...r }: RowInput) =>
+    rows.push({ ...r, value: round(r.value), change: change === "" ? "" : round(change), change_unit, compared_to, notes });
+
+  // Key indicators
+  const gdpQ = last(pctChangeSeries(s.GDPC1, 3));
+  const gdpNow = s.GDPC1.find((o) => o.date === gdpQ.date)!;
+  add({
+    section: "Key indicators", indicator: "Real GDP", value: gdpNow.value, unit: "Billions of chained 2017 dollars (SAAR)",
+    observation_date: gdpNow.date, change: ((1 + gdpQ.value / 100) ** 4 - 1) * 100, change_unit: "Percent, annualized",
+    compared_to: monthsBefore(gdpNow.date, 3), fred_series: "GDPC1",
+  });
+  const infl = latestChange(pctChangeSeries(s.CPIAUCSL, 12));
+  add({
+    section: "Key indicators", indicator: "Inflation rate (CPI, 12-month change)", value: infl.cur.value, unit: "Percent",
+    observation_date: infl.cur.date, change: infl.delta, change_unit: "Percentage points", compared_to: infl.prev.date,
+    fred_series: "CPIAUCSL", notes: "Latest month with a published 12-month base",
+  });
+  for (const [indicator, id] of [["Unemployment rate", "UNRATE"], ["Federal funds effective rate", "FEDFUNDS"]] as const) {
+    const c = latestChange(s[id]);
+    add({
+      section: "Key indicators", indicator, value: c.cur.value, unit: "Percent", observation_date: c.cur.date,
+      change: c.delta, change_unit: "Percentage points", compared_to: c.prev.date, fred_series: id,
+      notes: id === "FEDFUNDS" ? "Monthly average" : "",
+    });
+  }
+
+  // S&P 500
+  const sp = buildSp500(s.SP500);
+  const spLast = last(s.SP500);
+  add({ section: "S&P 500", indicator: "S&P 500 close", value: spLast.value, unit: "Index", observation_date: spLast.date, fred_series: "SP500" });
+  for (const r of ranges) {
+    const first = new Date(sp.series[r][0][0]).toISOString().slice(0, 10);
+    add({
+      section: "S&P 500", indicator: `S&P 500 change, ${r === "Max" ? "10Y" : r}`, value: sp.change[r], unit: "Percent",
+      observation_date: spLast.date, compared_to: first, fred_series: "SP500",
+    });
+  }
+
+  // Labor market
+  const pay = latestChange(diffSeries(s.PAYEMS, 1));
+  add({
+    section: "Labor market", indicator: "Nonfarm payrolls, monthly change", value: pay.cur.value, unit: "Thousands of jobs",
+    observation_date: pay.cur.date, fred_series: "PAYEMS",
+  });
+  const jol = last(s.JTSJOL);
+  add({ section: "Labor market", indicator: "Job openings", value: jol.value, unit: "Thousands", observation_date: jol.date, fred_series: "JTSJOL" });
+  const icsa = last(s.ICSA);
+  add({
+    section: "Labor market", indicator: "Initial jobless claims", value: icsa.value, unit: "Number",
+    observation_date: icsa.date, fred_series: "ICSA", notes: "Week ending date",
+  });
+
+  // Inflation components
+  const y = latestCpiChanges(s.CPIAUCSL, s.CPILFESL, s.CPIUFDSL, s.CPIENGSL);
+  for (const [indicator, o, id, weight] of [
+    ["Headline CPI, 12-month change", y.headline, "CPIAUCSL", null],
+    ["Core CPI, 12-month change", y.core, "CPILFESL", CPI_WEIGHTS.core],
+    ["Food CPI, 12-month change", y.food, "CPIUFDSL", CPI_WEIGHTS.food],
+    ["Energy CPI, 12-month change", y.energy, "CPIENGSL", CPI_WEIGHTS.energy],
+  ] as const) {
+    add({
+      section: "Inflation", indicator, value: o.value, unit: "Percent", observation_date: o.date, fred_series: id,
+      notes: weight === null ? "" : `${weight}% of CPI-U basket (BLS relative importance, Dec 2024)`,
+    });
+  }
+
+  // Treasury yields
+  const yl = latestYields(s);
+  for (const [tenor, id] of [...TENORS, ["2Y", "DGS2"]] as const) {
+    add({ section: "Treasury yields", indicator: `${tenor} Treasury yield`, value: yl.at(id), unit: "Percent", observation_date: yl.date, fred_series: id });
+  }
+  add({
+    section: "Treasury yields", indicator: "10Y-2Y spread", value: (yl.at("DGS10") - yl.at("DGS2")) * 100, unit: "Basis points",
+    observation_date: yl.date, fred_series: "DGS10, DGS2",
+  });
+
+  return rows;
 }
