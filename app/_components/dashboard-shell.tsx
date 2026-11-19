@@ -7,10 +7,12 @@ import { Icon } from "./icon";
 function Sidebar({
   open,
   active,
+  asOf,
   onSelect,
   onClose,
 }: {
   open: boolean;
+  asOf: string;
   active: string;
   onSelect: (label: string) => void;
   onClose: () => void;
@@ -85,7 +87,7 @@ function Sidebar({
         <div className="m-3 rounded-xl border border-white/10 bg-white/[.06] p-4">
           <p className="text-xs font-semibold text-white">Data updated</p>
           <p className="mt-1 text-[11px] leading-relaxed text-blue-100/55">
-            All series are current as of June 12, 2025.
+            All series are current as of {asOf}.
           </p>
           <button
             type="button"
@@ -167,7 +169,7 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   );
 }
 
-export function DashboardShell({ children }: { children: ReactNode }) {
+export function DashboardShell({ children, asOf }: { children: ReactNode; asOf: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [active, setActive] = useState("Dashboard");
 
@@ -184,6 +186,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#f4f7fa] text-slate-700">
       <Sidebar
         open={menuOpen}
+        asOf={asOf}
         active={active}
         onSelect={(label) => {
           setActive(label);
