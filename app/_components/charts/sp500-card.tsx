@@ -12,7 +12,8 @@ import {
 } from "recharts";
 import { niceTicks } from "@/app/_lib/scale";
 import { ranges, type Range, type Sp500Data } from "@/app/_lib/types";
-import { CardHeader, Trend } from "../card-parts";
+import { CardHeader, SourceLink, Trend } from "../card-parts";
+import { CARD_SOURCES } from "@/app/_lib/sources";
 import { ChartTooltipCard, EdgeAnchoredTick } from "./chart-utils";
 
 const LINE = "#2476cf";
@@ -59,7 +60,7 @@ export function Sp500Card({ data }: { data: Sp500Data }) {
   const formatTick = tickFormatter(range);
 
   return (
-    <article className="dashboard-card min-w-0">
+    <article className="dashboard-card flex flex-col min-w-0">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <CardHeader
@@ -183,6 +184,7 @@ export function Sp500Card({ data }: { data: Sp500Data }) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      <SourceLink source={CARD_SOURCES.sp500} title="S&P 500 Index" />
     </article>
   );
 }
