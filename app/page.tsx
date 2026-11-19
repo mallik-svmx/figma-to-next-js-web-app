@@ -1,69 +1,124 @@
-import Image from "next/image";
+import { CardHeader, Trend } from "./_components/card-parts";
+import { InflationCard } from "./_components/charts/inflation-card";
+import { Sp500Card } from "./_components/charts/sp500-card";
+import { YieldCurveCard } from "./_components/charts/yield-curve-card";
+import { DashboardShell } from "./_components/dashboard-shell";
+import { Icon } from "./_components/icon";
+import { laborMarket, metrics } from "./_lib/dashboard-data";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <DashboardShell>
+      <main className="mx-auto max-w-[1540px] p-4 md:p-7 lg:p-8">
+        <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[.16em] text-blue-600">
+              United States economy
+            </p>
+            <h1 className="text-2xl font-semibold tracking-[-.025em] text-slate-900 md:text-[28px]">
+              Economic Overview
+            </h1>
+            <p className="mt-2 text-xs text-slate-400">
+              Real-time insights from the Federal Reserve Economic Data
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" className="secondary-button">
+              <Icon name="download" size={15} /> Export data
+            </button>
+            <button type="button" className="primary-button">
+              Customize dashboard
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+        <section
+          aria-label="Key indicators"
+          className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          {metrics.map((metric) => (
+            <article className="metric-card" key={metric.label}>
+              <div className="flex items-center justify-between">
+                <div className={`metric-icon metric-${metric.color}`}>
+                  <Icon name={metric.icon} size={17} />
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {metric.detail}
+                </span>
+              </div>
+              <p className="mt-5 text-[11px] font-medium text-slate-500">
+                {metric.label}
+              </p>
+              <div className="mt-1 flex items-end justify-between">
+                <strong className="text-[25px] font-semibold tracking-tight text-slate-900">
+                  {metric.value}
+                </strong>
+                <Trend direction={metric.up ? "up" : "down"}>
+                  {metric.trend}
+                </Trend>
+              </div>
+              <p className="mt-1 text-[9px] text-slate-400">
+                from previous period
+              </p>
+            </article>
+          ))}
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,.8fr)]">
+          <Sp500Card />
+
+          <article className="dashboard-card">
+            <CardHeader
+              title="Labor market"
+              subtitle="Latest monthly employment indicators"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+            <div className="mt-7 space-y-6">
+              {laborMarket.map((item) => (
+                <div key={item.label}>
+                  <div className="mb-2 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">{item.label}</span>
+                    <span className="font-semibold text-slate-800">
+                      {item.value}
+                    </span>
+                  </div>
+                  <div
+                    className="h-1.5 overflow-hidden rounded-full bg-slate-100"
+                    role="meter"
+                    aria-label={item.label}
+                    aria-valuenow={item.width}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${item.width}%`,
+                        background: item.color,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-7 rounded-xl bg-blue-50/70 p-4">
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                <strong className="font-semibold text-blue-700">
+                  Labor remains resilient.
+                </strong>{" "}
+                Payroll growth exceeded the 125K consensus estimate in May.
+              </p>
+            </div>
+          </article>
+
+          <InflationCard />
+          <YieldCurveCard />
+        </section>
+
+        <p className="mt-6 text-center text-[10px] text-slate-400">
+          Source: Federal Reserve Bank of St. Louis · Data shown for
+          illustrative purposes
+        </p>
       </main>
-    </div>
+    </DashboardShell>
   );
 }
